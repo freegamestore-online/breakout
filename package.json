@@ -1,0 +1,13 @@
+{
+  "name": "breakout",
+  "private": true,
+  "packageManager": "pnpm@10.30.3",
+  "engines": { "node": ">=22" },
+  "pnpm": { "onlyBuiltDependencies": ["esbuild"] },
+  "scripts": {
+    "dev": "pnpm --filter @breakout/web dev",
+    "build": "pnpm --filter @breakout/web build",
+    "preview": "pnpm --filter @breakout/web preview",
+    "typecheck": "pnpm --filter @breakout/web exec tsc -b"
+  }
+}
