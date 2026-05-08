@@ -4,6 +4,7 @@ import { Application, Graphics } from "pixi.js";
 
 interface GameProps {
   onScore: (score: number) => void;
+  onLives: (lives: number) => void;
   onGameOver: () => void;
   paused?: boolean;
 }
@@ -42,14 +43,16 @@ interface Brick {
   gfx: Graphics;
 }
 
-export function Game({ onScore, onGameOver, paused }: GameProps) {
+export function Game({ onScore, onLives, onGameOver, paused }: GameProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const onScoreRef = useRef(onScore);
+  const onLivesRef = useRef(onLives);
   const onGameOverRef = useRef(onGameOver);
   const pausedRef = useRef(paused);
   const sounds = useGameSounds();
   const soundsRef = useRef(sounds);
   onScoreRef.current = onScore;
+  onLivesRef.current = onLives;
   onGameOverRef.current = onGameOver;
   pausedRef.current = paused;
   soundsRef.current = sounds;
@@ -90,10 +93,8 @@ export function Game({ onScore, onGameOver, paused }: GameProps) {
       // --- Graphics objects ---
       const paddleGfx = new Graphics();
       const ballGfx = new Graphics();
-      const livesGfx = new Graphics();
       app.stage.addChild(paddleGfx);
       app.stage.addChild(ballGfx);
-      app.stage.addChild(livesGfx);
 
       function drawPaddle() {
         paddleGfx.clear();
@@ -109,13 +110,6 @@ export function Game({ onScore, onGameOver, paused }: GameProps) {
       function drawBall() {
         ballGfx.clear();
         ballGfx.circle(ballX, ballY, BALL_RADIUS).fill(0xfbbf24);
-      }
-
-      function drawLives() {
-        livesGfx.clear();
-        for (let i = 0; i < lives; i++) {
-          livesGfx.circle(20 + i * 22, 20, 7).fill(0xef4444);
-        }
       }
 
       // --- Bricks ---
@@ -168,7 +162,7 @@ export function Game({ onScore, onGameOver, paused }: GameProps) {
       createBricks();
       drawPaddle();
       drawBall();
-      drawLives();
+      onLivesRef.current(lives);
 
       // --- Input ---
       const keys = new Set<string>();
@@ -262,7 +256,7 @@ export function Game({ onScore, onGameOver, paused }: GameProps) {
         // Ball fell below paddle
         if (ballY + BALL_RADIUS > H) {
           lives--;
-          drawLives();
+          onLivesRef.current(lives);
           if (lives <= 0) {
             alive = false;
             soundsRef.current.playGameOver();
@@ -335,8 +329,8 @@ export function Game({ onScore, onGameOver, paused }: GameProps) {
         drawBall();
       });
 
-      // Initial draws
-      drawLives();
+      // Initial lives
+      onLivesRef.current(lives);
     })();
 
     return () => {
@@ -345,5 +339,5 @@ export function Game({ onScore, onGameOver, paused }: GameProps) {
     };
   }, []);
 
-  return <div ref={containerRef} className="w-full h-full" />;
+  return <div ref={containerRef} className="w-full h-full overflow-hidden" />;
 }
