@@ -4,6 +4,7 @@ import { Application, Graphics } from "pixi.js";
 interface GameProps {
   onScore: (score: number) => void;
   onGameOver: () => void;
+  paused?: boolean;
 }
 
 // --- Layout constants (computed relative to canvas size) ---
@@ -40,12 +41,14 @@ interface Brick {
   gfx: Graphics;
 }
 
-export function Game({ onScore, onGameOver }: GameProps) {
+export function Game({ onScore, onGameOver, paused }: GameProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const onScoreRef = useRef(onScore);
   const onGameOverRef = useRef(onGameOver);
+  const pausedRef = useRef(paused);
   onScoreRef.current = onScore;
   onGameOverRef.current = onGameOver;
+  pausedRef.current = paused;
 
   useEffect(() => {
     const container = containerRef.current;
@@ -212,7 +215,7 @@ export function Game({ onScore, onGameOver }: GameProps) {
 
       // --- Game loop ---
       app.ticker.add((ticker) => {
-        if (!alive) return;
+        if (!alive || pausedRef.current) return;
         const dt = Math.min(ticker.deltaTime, 3); // cap at ~3 frames
 
         // Keyboard paddle movement
