@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { useGameSounds } from "@freegamestore/games";
 import { Application, Graphics } from "pixi.js";
 
 interface GameProps {
@@ -46,9 +47,12 @@ export function Game({ onScore, onGameOver, paused }: GameProps) {
   const onScoreRef = useRef(onScore);
   const onGameOverRef = useRef(onGameOver);
   const pausedRef = useRef(paused);
+  const sounds = useGameSounds();
+  const soundsRef = useRef(sounds);
   onScoreRef.current = onScore;
   onGameOverRef.current = onGameOver;
   pausedRef.current = paused;
+  soundsRef.current = sounds;
 
   useEffect(() => {
     const container = containerRef.current;
@@ -261,6 +265,7 @@ export function Game({ onScore, onGameOver, paused }: GameProps) {
           drawLives();
           if (lives <= 0) {
             alive = false;
+            soundsRef.current.playGameOver();
             onGameOverRef.current();
             return;
           }
@@ -285,6 +290,7 @@ export function Game({ onScore, onGameOver, paused }: GameProps) {
           ballDX = Math.cos(angle) * speed;
           ballDY = Math.sin(angle) * speed;
           ballY = paddleY - BALL_RADIUS - 1;
+          soundsRef.current.playMove();
         }
 
         // Brick collisions
@@ -305,6 +311,7 @@ export function Game({ onScore, onGameOver, paused }: GameProps) {
             bricksRemaining--;
             score += brick.points;
             onScoreRef.current(score);
+            soundsRef.current.playScore();
 
             // Determine bounce direction
             const overlapX = BALL_RADIUS - Math.abs(distX);
@@ -320,6 +327,7 @@ export function Game({ onScore, onGameOver, paused }: GameProps) {
 
         // All bricks cleared — next level
         if (bricksRemaining === 0) {
+          soundsRef.current.playClear();
           nextLevel();
         }
 
