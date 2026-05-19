@@ -72,8 +72,17 @@ export function Game({ onScore, onLives, onGameOver, paused }: GameProps) {
       }
       container.appendChild(app.canvas);
 
-      const W = app.screen.width;
-      const H = app.screen.height;
+      // app.screen.{width,height} can change when the container resizes
+      // (window resize, phone rotation, sidebar collapsing). Read them through
+      // helpers so paddle/ball positions track the current canvas size instead
+      // of getting frozen at the values present on first mount.
+      const screenW = () => app.screen.width;
+      const screenH = () => app.screen.height;
+      // Paddle sits 6% of the canvas height above the bottom, clamped to a
+      // minimum 50px margin so it's never glued to the edge on tall screens
+      // or invisibly below the viewport on small ones.
+      const paddleYFromBottom = () => Math.max(50, screenH() * 0.06);
+      const getPaddleY = () => screenH() - paddleYFromBottom();
 
       // --- State ---
       let score = 0;
@@ -82,11 +91,10 @@ export function Game({ onScore, onLives, onGameOver, paused }: GameProps) {
       let ballSpeed = INITIAL_BALL_SPEED;
       let ballDX = ballSpeed * 0.7;
       let ballDY = -ballSpeed * 0.7;
-      let paddleX = W / 2;
-      const paddleY = H - 40;
+      let paddleX = screenW() / 2;
       const paddleW = 100;
-      let ballX = W / 2;
-      let ballY = paddleY - BALL_RADIUS - 1;
+      let ballX = screenW() / 2;
+      let ballY = getPaddleY() - BALL_RADIUS - 1;
       let ballAttached = true;
       let alive = true;
 
@@ -100,7 +108,7 @@ export function Game({ onScore, onLives, onGameOver, paused }: GameProps) {
         paddleGfx.clear();
         paddleGfx.roundRect(
           paddleX - paddleW / 2,
-          paddleY,
+          getPaddleY(),
           paddleW,
           PADDLE_HEIGHT,
           PADDLE_RADIUS,
@@ -124,7 +132,7 @@ export function Game({ onScore, onLives, onGameOver, paused }: GameProps) {
         bricks = [];
 
         const totalGapX = BRICK_GAP * (BRICK_COLS + 1);
-        const brickW = (W - totalGapX) / BRICK_COLS;
+        const brickW = (screenW() - totalGapX) / BRICK_COLS;
         const brickH = 18;
 
         for (let row = 0; row < BRICK_ROWS; row++) {
@@ -144,7 +152,7 @@ export function Game({ onScore, onLives, onGameOver, paused }: GameProps) {
       function resetBall() {
         ballAttached = true;
         ballX = paddleX;
-        ballY = paddleY - BALL_RADIUS - 1;
+        ballY = getPaddleY() - BALL_RADIUS - 1;
         const angle = -Math.PI / 4 + Math.random() * (-Math.PI / 2);
         ballDX = Math.cos(angle) * ballSpeed;
         ballDY = Math.sin(angle) * ballSpeed;
@@ -179,8 +187,8 @@ export function Game({ onScore, onLives, onGameOver, paused }: GameProps) {
 
       function onPointerMove(e: PointerEvent) {
         const rect = app.canvas.getBoundingClientRect();
-        paddleX = ((e.clientX - rect.left) / rect.width) * W;
-        paddleX = Math.max(paddleW / 2, Math.min(W - paddleW / 2, paddleX));
+        paddleX = ((e.clientX - rect.left) / rect.width) * screenW();
+        paddleX = Math.max(paddleW / 2, Math.min(screenW() - paddleW / 2, paddleX));
       }
 
       function onPointerDown() {
@@ -194,8 +202,8 @@ export function Game({ onScore, onLives, onGameOver, paused }: GameProps) {
         const touch = e.touches[0];
         if (!touch) return;
         const rect = app.canvas.getBoundingClientRect();
-        paddleX = ((touch.clientX - rect.left) / rect.width) * W;
-        paddleX = Math.max(paddleW / 2, Math.min(W - paddleW / 2, paddleX));
+        paddleX = ((touch.clientX - rect.left) / rect.width) * screenW();
+        paddleX = Math.max(paddleW / 2, Math.min(screenW() - paddleW / 2, paddleX));
       }
 
       function onTouchStart() {
@@ -224,12 +232,12 @@ export function Game({ onScore, onLives, onGameOver, paused }: GameProps) {
         if (keys.has("ArrowRight") || keys.has("d")) {
           paddleX += paddleSpeed;
         }
-        paddleX = Math.max(paddleW / 2, Math.min(W - paddleW / 2, paddleX));
+        paddleX = Math.max(paddleW / 2, Math.min(screenW() - paddleW / 2, paddleX));
 
         // Ball follows paddle when attached
         if (ballAttached) {
           ballX = paddleX;
-          ballY = paddleY - BALL_RADIUS - 1;
+          ballY = getPaddleY() - BALL_RADIUS - 1;
           drawPaddle();
           drawBall();
           return;
@@ -244,8 +252,8 @@ export function Game({ onScore, onLives, onGameOver, paused }: GameProps) {
           ballX = BALL_RADIUS;
           ballDX = Math.abs(ballDX);
         }
-        if (ballX + BALL_RADIUS > W) {
-          ballX = W - BALL_RADIUS;
+        if (ballX + BALL_RADIUS > screenW()) {
+          ballX = screenW() - BALL_RADIUS;
           ballDX = -Math.abs(ballDX);
         }
         if (ballY - BALL_RADIUS < 0) {
@@ -254,7 +262,7 @@ export function Game({ onScore, onLives, onGameOver, paused }: GameProps) {
         }
 
         // Ball fell below paddle
-        if (ballY + BALL_RADIUS > H) {
+        if (ballY + BALL_RADIUS > screenH()) {
           lives--;
           onLivesRef.current(lives);
           if (lives <= 0) {
@@ -270,6 +278,7 @@ export function Game({ onScore, onLives, onGameOver, paused }: GameProps) {
         }
 
         // Paddle collision
+        const paddleY = getPaddleY();
         if (
           ballDY > 0 &&
           ballY + BALL_RADIUS >= paddleY &&
