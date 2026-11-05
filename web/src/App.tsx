@@ -17,6 +17,7 @@ export default function App() {
   const [bestScore, setBestScore] = useState(getBestScore);
   const [lives, setLives] = useState(3);
   const [paused, setPaused] = useState(false);
+  const [gameKey, setGameKey] = useState(0);
   const scoreRef = useRef(0);
   const { submitScore } = useLeaderboard("breakout");
 
@@ -44,6 +45,8 @@ export default function App() {
     setScore(0);
     scoreRef.current = 0;
     setLives(3);
+    setPaused(false);
+    setGameKey((k) => k + 1);
     setPhase("playing");
   }, []);
 
@@ -92,7 +95,7 @@ export default function App() {
     >
       <div className="relative w-full h-full">
         {phase === "playing" ? (
-          <Game onScore={handleScore} onLives={handleLives} onGameOver={handleGameOver} paused={paused} />
+          <Game key={gameKey} onScore={handleScore} onLives={handleLives} onGameOver={handleGameOver} paused={paused} />
         ) : (
           <div className="flex flex-col items-center justify-center h-full gap-4">
             <p

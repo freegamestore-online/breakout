@@ -62,6 +62,7 @@ export function Game({ onScore, onLives, onGameOver, paused }: GameProps) {
     if (!container) return;
 
     let destroyed = false;
+    let removeKeyListeners = () => {};
     const app = new Application();
 
     (async () => {
@@ -214,6 +215,10 @@ export function Game({ onScore, onLives, onGameOver, paused }: GameProps) {
 
       window.addEventListener("keydown", onKeyDown);
       window.addEventListener("keyup", onKeyUp);
+      removeKeyListeners = () => {
+        window.removeEventListener("keydown", onKeyDown);
+        window.removeEventListener("keyup", onKeyUp);
+      };
       app.canvas.addEventListener("pointermove", onPointerMove);
       app.canvas.addEventListener("pointerdown", onPointerDown);
       app.canvas.addEventListener("touchmove", onTouchMove, { passive: true });
@@ -297,10 +302,8 @@ export function Game({ onScore, onLives, onGameOver, paused }: GameProps) {
         }
 
         // Brick collisions
-        let bricksRemaining = 0;
         for (const brick of bricks) {
           if (!brick.alive) continue;
-          bricksRemaining++;
 
           // AABB check with ball center + radius
           const closestX = Math.max(brick.x, Math.min(ballX, brick.x + brick.w));
@@ -311,7 +314,6 @@ export function Game({ onScore, onLives, onGameOver, paused }: GameProps) {
           if (distX * distX + distY * distY <= BALL_RADIUS * BALL_RADIUS) {
             brick.alive = false;
             brick.gfx.visible = false;
-            bricksRemaining--;
             score += brick.points;
             onScoreRef.current(score);
             soundsRef.current.playScore();
@@ -329,7 +331,7 @@ export function Game({ onScore, onLives, onGameOver, paused }: GameProps) {
         }
 
         // All bricks cleared — next level
-        if (bricksRemaining === 0) {
+        if (!bricks.some((b) => b.alive)) {
           soundsRef.current.playClear();
           nextLevel();
         }
@@ -344,6 +346,7 @@ export function Game({ onScore, onLives, onGameOver, paused }: GameProps) {
 
     return () => {
       destroyed = true;
+      removeKeyListeners();
       app.destroy(true);
     };
   }, []);
