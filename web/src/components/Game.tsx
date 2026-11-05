@@ -361,9 +361,6 @@ export function Game({ onScore, onLives, onGameOver, paused }: GameProps) {
         drawPaddle();
         drawBall();
       });
-
-      // Initial lives
-      onLivesRef.current(lives);
     })();
 
     return () => {
