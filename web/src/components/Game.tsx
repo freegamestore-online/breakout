@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useGameSounds } from "@freegamestore/games";
 import { Application, Graphics } from "pixi.js";
+import { brickLayout, BRICK_COLS, type BrickRect } from "../lib/bricks";
 
 interface GameProps {
   onScore: (score: number) => void;
@@ -10,10 +11,6 @@ interface GameProps {
 }
 
 // --- Layout constants (computed relative to canvas size) ---
-const BRICK_ROWS = 6;
-const BRICK_COLS = 10;
-const BRICK_GAP = 4;
-const BRICK_TOP_OFFSET = 60;
 const PADDLE_HEIGHT = 22;
 const PADDLE_RADIUS = 11;
 const BALL_RADIUS = 7;
@@ -32,11 +29,7 @@ const ROW_COLORS: number[] = [
 
 const ROW_POINTS: number[] = [60, 50, 40, 30, 20, 10];
 
-interface Brick {
-  x: number;
-  y: number;
-  w: number;
-  h: number;
+interface Brick extends BrickRect {
   color: number;
   points: number;
   alive: boolean;
@@ -66,7 +59,12 @@ export function Game({ onScore, onLives, onGameOver, paused }: GameProps) {
     const app = new Application();
 
     (async () => {
-      await app.init({ resizeTo: container, background: "#0f172a" });
+      await app.init({
+        resizeTo: container,
+        background: "#0f172a",
+        resolution: window.devicePixelRatio || 1,
+        autoDensity: true,
+      });
       if (destroyed) {
         app.destroy(true);
         return;
@@ -132,23 +130,47 @@ export function Game({ onScore, onLives, onGameOver, paused }: GameProps) {
         }
         bricks = [];
 
-        const totalGapX = BRICK_GAP * (BRICK_COLS + 1);
-        const brickW = (screenW() - totalGapX) / BRICK_COLS;
-        const brickH = 18;
-
-        for (let row = 0; row < BRICK_ROWS; row++) {
-          const color = ROW_COLORS[row % ROW_COLORS.length]!;
-          const points = ROW_POINTS[row % ROW_POINTS.length]!;
-          for (let col = 0; col < BRICK_COLS; col++) {
-            const x = BRICK_GAP + col * (brickW + BRICK_GAP);
-            const y = BRICK_TOP_OFFSET + row * (brickH + BRICK_GAP);
-            const gfx = new Graphics();
-            gfx.roundRect(x, y, brickW, brickH, 4).fill(color);
-            app.stage.addChild(gfx);
-            bricks.push({ x, y, w: brickW, h: brickH, color, points, alive: true, gfx });
-          }
-        }
+        brickLayout(screenW()).forEach((rect, i) => {
+          const row = Math.floor(i / BRICK_COLS);
+          const brick: Brick = {
+            ...rect,
+            color: ROW_COLORS[row % ROW_COLORS.length]!,
+            points: ROW_POINTS[row % ROW_POINTS.length]!,
+            alive: true,
+            gfx: new Graphics(),
+          };
+          drawBrick(brick);
+          app.stage.addChild(brick.gfx);
+          bricks.push(brick);
+        });
       }
+
+      function drawBrick(b: Brick) {
+        b.gfx.clear();
+        b.gfx.roundRect(b.x, b.y, b.w, b.h, 4).fill(b.color);
+      }
+
+      // Bricks are laid out from the canvas width, so re-flow them (keeping
+      // which ones are broken) and keep the ball/paddle proportionally placed
+      // when the canvas resizes (rotation, window resize).
+      let lastW = screenW();
+      let lastH = screenH();
+      app.renderer.on("resize", (w: number, h: number) => {
+        brickLayout(w).forEach((rect, i) => {
+          const brick = bricks[i]!;
+          Object.assign(brick, rect);
+          drawBrick(brick);
+        });
+        if (lastW > 0 && lastH > 0) {
+          paddleX *= w / lastW;
+          ballX *= w / lastW;
+          ballY *= h / lastH;
+        }
+        lastW = w;
+        lastH = h;
+        drawPaddle();
+        drawBall();
+      });
 
       function resetBall() {
         ballAttached = true;

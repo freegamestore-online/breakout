@@ -8,7 +8,7 @@ const BEST_SCORE_KEY = "freebreakout-best";
 
 function getBestScore(): number {
   const v = localStorage.getItem(BEST_SCORE_KEY);
-  return v ? parseInt(v, 10) : 0;
+  return v ? parseInt(v, 10) || 0 : 0;
 }
 
 export default function App() {
